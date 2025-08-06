@@ -133,4 +133,12 @@ public class PermissionUtil {
         }
     }
 
+    public interface PermissionCallback {
+        /** 权限已授予 */
+        void onPermissionGranted();
+
+        /** 权限被拒绝 */
+        void onPermissionDenied();
+    }
+
 }

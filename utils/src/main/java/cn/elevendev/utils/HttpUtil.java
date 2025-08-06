@@ -46,7 +46,7 @@ public class HttpUtil {
      * @param params   提交的参数
      * @param callback 请求结果的回调接口（UI线程回调）
      */
-    public static void post(final String api, final Map<String, String> params, final AndroidUtils.HttpCallback callback) {
+    public static void post(final String api, final Map<String, String> params, final HttpCallback callback) {
         final String url = baseUrl + api;
         new Thread(new Runnable() {
                 @Override
@@ -106,7 +106,7 @@ public class HttpUtil {
      * @param api      请求的 API 端点
      * @param callback 请求结果的回调接口（UI线程回调）
      */
-    public static void get(final String api, final AndroidUtils.HttpCallback callback) {
+    public static void get(final String api, final HttpCallback callback) {
 		final String url = baseUrl + api;
 
 		new Thread(new Runnable() {
@@ -163,7 +163,7 @@ public class HttpUtil {
      * @param destinationPath 文件保存的目标路径
      * @param callback        下载进度及结果的回调接口
      */
-    public static void downloadFile(String url, String destinationPath, AndroidUtils.HttpCallback callback) {
+    public static void downloadFile(String url, String destinationPath, HttpCallback callback) {
         Request request = new Request.Builder()
                 .url(url)
                 .build();
@@ -231,6 +231,19 @@ public class HttpUtil {
                 }
             }
         });
+    }
+
+    /**
+     * 请求结果回调接口
+     */
+    public interface HttpCallback {
+        void onSuccess(String response);
+        default void onFailure(String errorMessage) {
+            // 请求失败
+        }
+        default void onProgress(int progress) {
+            // 进度更新接口
+        }
     }
 
 }

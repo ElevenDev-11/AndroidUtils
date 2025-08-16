@@ -2,20 +2,24 @@ package cn.elevendev.utils;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AppOpsManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.Settings;
+import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 public class PermissionUtil {
-    
+
     private static final int REQUEST_WRITE_STORAGE = 10011;
     private static final int REQUEST_CODE_ALL_FILES_PERMISSION = 10012;
+    private static final int REQUEST_CODE_FLOAT_PERMISSION = 10013;
     
     private static AndroidUtils.PermissionCallback callback;
     
@@ -64,6 +68,69 @@ public class PermissionUtil {
             requestAllFilesPermission(activity);
         } else {
             requestLegacyPermission(activity);
+        }
+    }
+
+    /**
+     * 检查悬浮窗权限
+     *
+     * @param context 上下文
+     * @return 是否有权限
+     */
+    public static boolean isFloatPermission(Context context) {
+        boolean canDrawOverlays;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            canDrawOverlays = Settings.canDrawOverlays(context);
+        } else {
+            canDrawOverlays = true;
+        }
+
+        // Android 4.4+，但 Settings.canDrawOverlays 无法使用时，进一步尝试 AppOps 检查
+        if (!canDrawOverlays && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            AppOpsManager appOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
+            if (appOpsManager == null) {
+                return true; // 系统服务异常时，默认放行（保守策略）
+            }
+
+            String packageName = context.getPackageName();
+            int uid = android.os.Process.myUid();
+            int mode = appOpsManager.checkOpNoThrow(AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW, uid, packageName);
+
+            if (mode == AppOpsManager.MODE_ALLOWED) {
+                canDrawOverlays = true;
+            }
+        }
+
+        return canDrawOverlays;
+    }
+
+    /**
+     * 请求悬浮窗权限
+     *
+     * @param activity 当前 Activity
+     */
+    public static void requestFloatPermission(Activity activity) {
+        requestFloatPermission(activity, "请手动前往设置开启悬浮窗权限");
+    }
+
+    /**
+     * 请求悬浮窗权限
+     *
+     * @param activity      当前 Activity
+     * @param fallbackMessage 降级提示信息
+     */
+    public static void requestFloatPermission(Activity activity, String fallbackMessage) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+            String packageName = activity.getPackageName();
+            Uri uri = Uri.fromParts("package", packageName, null);
+            intent.setData(uri);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivityForResult(intent, 0);
+        } else {
+            if (fallbackMessage != null && !fallbackMessage.isEmpty()) {
+                Toast.makeText(activity, fallbackMessage, Toast.LENGTH_SHORT).show();
+            }
         }
     }
 

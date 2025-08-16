@@ -349,6 +349,25 @@ public class AndroidUtils {
     }
 
     /**
+     * 判断是否拥有悬浮窗权限
+     *
+     * @param context 上下文
+     * @return 是否有权限
+     */
+    public static boolean isFloatPermission(Context context) {
+        return PermissionUtil.isFloatPermission(context);
+    }
+
+    /**
+     * 检查并请求悬浮窗权限
+     *
+     * @param activity 当前 Activity
+     */
+    public static void requestFloatPermission(Activity activity) {
+        PermissionUtil.requestFloatPermission(activity);
+    }
+
+    /**
      * 处理权限结果回调
      *
      * @param requestCode  请求码

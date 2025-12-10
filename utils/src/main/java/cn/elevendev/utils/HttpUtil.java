@@ -237,10 +237,25 @@ public class HttpUtil {
      * 请求结果回调接口
      */
     public interface HttpCallback {
+        /**
+         * 请求成功时回调
+         *
+         * @param response 请求结果
+         */
         void onSuccess(String response);
+        /**
+         * 请求失败时回调
+         *
+         * @param errorMessage 错误信息
+         */
         default void onFailure(String errorMessage) {
             // 请求失败
         }
+        /**
+         * 请求进度更新时回调
+         *
+         * @param progress 进度百分比
+         */
         default void onProgress(int progress) {
             // 进度更新接口
         }

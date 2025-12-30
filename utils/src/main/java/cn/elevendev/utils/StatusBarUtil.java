@@ -3,13 +3,17 @@ package cn.elevendev.utils;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
-import android.graphics.Insets;
 import android.os.Build;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 public class StatusBarUtil {
 
@@ -62,51 +66,40 @@ public class StatusBarUtil {
      */
     public static void setTransparentStatusBar(Activity activity, boolean isDarkText) {
         Window window = activity.getWindow();
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        WindowCompat.setDecorFitsSystemWindows(window, false);
         window.setStatusBarColor(Color.TRANSPARENT);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             WindowInsetsController controller = window.getInsetsController();
             if (controller != null) {
-                if (isDarkText) {
-                    controller.setSystemBarsAppearance(
-                            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                    );
-                } else {
-                    controller.setSystemBarsAppearance(
-                            0,
-                            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                    );
-                }
-
-                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_DEFAULT);
+                controller.setSystemBarsAppearance(
+                        isDarkText
+                                ? WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                                : 0,
+                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                );
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             View decorView = window.getDecorView();
-            int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+            int flags = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
             if (isDarkText) {
                 flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
             }
             decorView.setSystemUiVisibility(flags);
         }
 
-        View rootView = activity.findViewById(android.R.id.content);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            rootView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-            rootView.setOnApplyWindowInsetsListener((v, insets) -> {
-                Insets systemBars = insets.getInsets(WindowInsets.Type.systemBars());
-                v.setPadding(
-                        systemBars.left,
-                        0,
-                        systemBars.right,
-                        systemBars.bottom
-                );
-                return insets.consumeSystemWindowInsets();
-            });
-        } else {
-            rootView.setFitsSystemWindows(true);
-        }
+        View content = activity.findViewById(android.R.id.content);
+        ViewCompat.setOnApplyWindowInsetsListener(content, (v, insets) -> {
+            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(
+                    bars.left,
+                    0,
+                    bars.right,
+                    bars.bottom
+            );
+            return insets;
+        });
     }
     
     /**

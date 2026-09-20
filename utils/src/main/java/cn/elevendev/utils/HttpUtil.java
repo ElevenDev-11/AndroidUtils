@@ -233,6 +233,124 @@ public class HttpUtil {
     }
 
     /**
+     * 下载文件流
+     *
+     * @param url      文件的下载链接
+     * @param callback 下载进度及结果的回调接口
+     */
+    public static void downloadStream(String url, HttpCallback callback) {
+        downloadStream(url, null, 256 * 1024, callback);
+    }
+
+    /**
+     * 下载文件流
+     *
+     * @param url      文件的下载链接
+     * @param headers  自定义请求头
+     * @param callback 下载进度及结果的回调接口
+     */
+    public static void downloadStream(String url, Map<String, String> headers, HttpCallback callback) {
+        downloadStream(url, headers, 256 * 1024, callback);
+    }
+
+    /**
+     * 下载文件流
+     *
+     * @param url      文件的下载链接
+     * @param headers  自定义请求头
+     * @param bufferSize 缓冲区大小
+     * @param callback 下载进度及结果的回调接口
+     */
+    public static void downloadStream(String url, Map<String, String> headers,
+                                      int bufferSize, HttpCallback callback) {
+        Request.Builder requestBuilder = new Request.Builder()
+                .url(url);
+
+        // 自定义请求头
+        if (headers != null) {
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                if (entry.getKey() != null && entry.getValue() != null) {
+                    requestBuilder.header(
+                            entry.getKey(),
+                            entry.getValue()
+                    );
+                }
+            }
+        }
+
+        Request request = requestBuilder.build();
+
+        client.newCall(request).enqueue(new Callback() {
+
+            @Override
+            public void onFailure(Call call, IOException e) {
+                mainHandler.post(() ->
+                        callback.onFailure(e.getMessage() != null ? e.getMessage() : "请求失败")
+                );
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) {
+                try {
+                    if (!response.isSuccessful()) {
+                        mainHandler.post(() ->
+                                callback.onFailure("HTTP " + response.code())
+                        );
+                        return;
+                    }
+
+                    ResponseBody responseBody = response.body();
+
+                    if (responseBody == null) {
+                        mainHandler.post(() -> callback.onFailure("响应内容为空"));
+                        return;
+                    }
+
+                    long contentLength = responseBody.contentLength();
+
+                    try (InputStream inputStream = responseBody.byteStream()) {
+
+                        byte[] buffer = new byte[bufferSize];
+
+                        int bytesRead;
+                        long downloadedBytes = 0;
+
+                        while ((bytesRead = inputStream.read(buffer)) != -1) {
+
+                            long fileOffset = downloadedBytes;
+
+                            // 在 OkHttp 工作线程执行
+                            callback.onChunk(buffer, bytesRead, fileOffset);
+
+                            downloadedBytes += bytesRead;
+
+                            // Content-Length 不存在时不计算进度
+                            if (contentLength > 0) {
+                                int progress = (int) (downloadedBytes * 100 / contentLength);
+
+                                mainHandler.post(() -> callback.onProgress(progress));
+                            }
+                        }
+                    }
+
+                    mainHandler.post(() ->
+                            callback.onSuccess(null)
+                    );
+
+                } catch (Exception e) {
+
+                    mainHandler.post(() ->
+                            callback.onFailure(e.getMessage() != null ? e.getMessage() : "下载失败")
+                    );
+
+                } finally {
+                    response.close();
+                }
+            }
+        });
+    }
+
+    /**
      * 请求结果回调接口
      */
     public interface HttpCallback {
@@ -257,6 +375,17 @@ public class HttpUtil {
          */
         default void onProgress(int progress) {
             // 进度更新接口
+        }
+
+        /**
+         * 下载分块数据时回调
+         *
+         * @param buffer     分块数据缓冲区
+         * @param length     分块数据长度
+         * @param fileOffset 分块数据在文件中的偏移量
+         */
+        default void onChunk(byte[] buffer, int length, long fileOffset) {
+            // 分块回调接口
         }
     }
 
